@@ -1,5 +1,5 @@
 'use strict';
-require('./senecaShim').start({application_id: 'index'});
+require('./senecaShim').start({application_id: '_index', service_name: 'service_index'});
 
 
 const s = require('seneca')();
@@ -18,7 +18,7 @@ s.use(function (options) {
 });
 setInterval(function () {
     // async test
-    s.act({role: 'service', cmd: 'something'}, {aa: 'cc'})
+    s.act({role: 'service', cmd: 'something'}, {aa: 'cc'}, function(){})
 
 }, 5000);
 
