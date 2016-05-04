@@ -1,32 +1,45 @@
 'use strict';
 
-const collectionIn = [];
-const collectionOut = [];
+const collectionRequestIn = [];
+const collectionRequestOut = [];
+const collectionResponseIn = [];
+const collectionResponseOut = [];
 
-module.exports = {
-    reportIncommingRequest,
-    reportOutgoingRequest,
-    flush
+module.exports = function(options) {
+
+    
+
+    return {
+        reportIncommingRequest,
+        reportOutgoingRequest,
+        flush
+    }
 };
 
 function reportIncommingRequest(todo) {
+    console.log('add incomming request to report');
     collectionIn.push(todo);
 }
 
 function reportOutgoingRequest(todo) {
+    console.log('add outgoing request to report');
     collectionOut.push(todo);
 }
 
 function flush() {
     const snapshot = {
-        in: collectionIn.slice(0),
-        out: collectionOut.slice(0)
+        inRequest: collectionRequestIn.slice(0),
+        outRequest: collectionRequestOut.slice(0),
+        inResponse: collectionResponseIn.slice(0),
+        outResponse: collectionResponseOut.slice(0)
     }
-    collectionIn.length = 0;
-    collectionOut.length = 0;
+    collectionRequestIn.length = 0;
+    collectionRequestOut.length = 0;
+    collectionResponseIn.length = 0;
+    collectionResponseOut.length = 0;
     return snapshot
 }
 
-setInterval(function() {
-    console.log('flushing', flush());
-}, 10000);
+// setInterval(function() {
+//     console.log('flushing', flush());
+// }, 10000);
