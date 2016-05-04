@@ -3,9 +3,8 @@
 var shimmer = require('shimmer');
 const util = require('util');
 
-const collector = require('./collector');
 
-module.exports = function (senecaInstance, a, b) {
+module.exports = function (senecaInstance, collector) {
     console.log('wrapping senecaInstance');
     shimmer.wrap(senecaInstance, 'add', function(original) {
         console.log('shimming seneca.add');
@@ -136,7 +135,7 @@ module.exports = function (senecaInstance, a, b) {
             if(fnIndex !== void 0) {
                 arguments[fnIndex] = function() {
                     // this will be called whenever a result is available
-                    console.log('result available');
+                    console.log('sync result available');
                     return fnToPatch.apply(this, arguments);
                 };
             }
