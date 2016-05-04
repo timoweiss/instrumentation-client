@@ -1,5 +1,5 @@
 'use strict';
-require('./senecaShim').start({application_id: 'service'});
+require('./senecaShim').start({application_id: '_service', service_name: 'service_service'});
 
 const s = require('seneca')();
 
