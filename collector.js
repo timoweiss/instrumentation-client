@@ -12,18 +12,30 @@ module.exports = function(options) {
     return {
         reportIncommingRequest,
         reportOutgoingRequest,
+        reportIncommingResponse,
+        reportOutgoingResponse,
         flush
     }
 };
 
 function reportIncommingRequest(todo) {
     console.log('add incomming request to report');
-    collectionIn.push(todo);
+    collectionRequestIn.push(todo);
 }
 
 function reportOutgoingRequest(todo) {
     console.log('add outgoing request to report');
-    collectionOut.push(todo);
+    collectionRequestOut.push(todo);
+}
+
+function reportIncommingResponse(todo) {
+    console.log('add incomming request to report');
+    collectionResponseIn.push(todo);
+}
+
+function reportOutgoingResponse(todo) {
+    console.log('add outgoing request to report');
+    collectionResponseOut.push(todo);
 }
 
 function flush() {
