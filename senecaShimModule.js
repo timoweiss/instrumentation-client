@@ -2,35 +2,51 @@
 
 var shimmer = require('shimmer');
 const util = require('util');
+const uuid = require('node-uuid');
 
 
 module.exports = function (senecaInstance, collector) {
     console.log('wrapping senecaInstance');
-    shimmer.wrap(senecaInstance, 'add', function(original) {
+    shimmer.wrap(senecaInstance, 'add', function (original) {
         console.log('shimming seneca.add');
-        return function() {
+        return function () {
             let str = '';
             // console.log('seneca add called', arguments[0])
 
 
             // check for handler cb
-            if(typeof arguments[1] === 'function') {
+            if (typeof arguments[1] === 'function') {
                 // preserve original request handler
                 let originalHandler = arguments[1];
                 // overrid original request handler
-                arguments[1] = function(args, callback) {
+                arguments[1] = function (args, callback) {
                     // someone wants us to act
                     const doReport = !!(args.____transactionId && args.transport$)
                     console.log('new incomming request', 'reporting?', doReport);
 
-                    if(doReport) {
+                    if (doReport) {
+
+                        let incommingTransactionId = args.____transactionId;
 
                         const collectorObject = {};
-                        collectorObject[args.____transactionId] = args;
+                        collectorObject[incommingTransactionId] = args;
 
                         collector.reportIncommingRequest(collectorObject);
-                    }
 
+                        let originalCallback = callback;
+                        arguments[1] = function (err, data) {
+                            if (!err && data) {
+                                data.____transactionId = incommingTransactionId;
+                                console.log('intercepting outgoing response', arguments);
+                                let outGoingResp = {};
+                                outGoingResp[incommingTransactionId] = data;
+                                collector.reportOutgoingResponse(outGoingResp);
+
+                            }
+                            return originalCallback.apply(this, arguments);
+                        }
+
+                    }
 
                     // call original implementation
                     return originalHandler.apply(this, arguments);
@@ -50,13 +66,14 @@ module.exports = function (senecaInstance, collector) {
         }
     });
     //
-    shimmer.wrap(senecaInstance, 'act', function(original) {
+    shimmer.wrap(senecaInstance, 'act', function (original) {
         console.log('shimming seneca.act');
 
-        return function(/*pattern, [[data], [callback]]*/) {
+        return function (/*pattern, [[data], [callback]]*/) {
 
 
-            if(arguments[0].____transactionId) {
+            if (arguments[0].____transactionId) {
+                console.log('____transactionId is available, patching nothing')
                 return original.apply(this, arguments);
             }
 
@@ -66,24 +83,25 @@ module.exports = function (senecaInstance, collector) {
             console.log('creating transaction:', transactionId);
             // console.log('act was called', '#1', arguments, transactionId);
             let objectToModify = {};
-            let fnToPatch = function() {};
+            let fnToPatch = function () {
+            };
             let fnIndex;
 
 
             // async call only with pattern
-            if(arguments.length === 1) {
+            if (arguments.length === 1) {
 
                 console.log('act call:', 'async call only with pattern');
 
-                if(typeof arguments[0] === 'object') {
+                if (typeof arguments[0] === 'object') {
                     objectToModify = arguments[0];
-                } else if(typeof arguments[0] === 'string') {
+                } else if (typeof arguments[0] === 'string') {
                     console.log('uff, TODO, add data to string')
                 }
             }
 
             // async call with pattern and data
-            if(arguments.length === 2 && typeof arguments[1] === 'object') {
+            if (arguments.length === 2 && typeof arguments[1] === 'object') {
 
                 console.log('act call:', 'async call with pattern and data');
 
@@ -91,7 +109,7 @@ module.exports = function (senecaInstance, collector) {
             }
 
             // sync call with pattern and callback (most likely)
-            if(arguments.length === 2 && typeof arguments[1] === 'function') {
+            if (arguments.length === 2 && typeof arguments[1] === 'function') {
 
                 console.log('act call:', 'sync call with pattern and callback (likely)');
 
@@ -99,15 +117,15 @@ module.exports = function (senecaInstance, collector) {
                 fnIndex = 1;
 
 
-                if(typeof arguments[0] === 'object') {
+                if (typeof arguments[0] === 'object') {
                     objectToModify = arguments[0];
-                } else if(typeof arguments[0] === 'string') {
+                } else if (typeof arguments[0] === 'string') {
                     console.log('uff, TODO, add data to string')
                 }
             }
 
             // sync call with pattern, data and callback
-            if(arguments.length === 3 && typeof arguments[1] === 'object' && typeof arguments[2] === 'function') {
+            if (arguments.length === 3 && typeof arguments[1] === 'object' && typeof arguments[2] === 'function') {
 
                 console.log('act call:', 'sync call with pattern, data and callback');
 
@@ -117,7 +135,7 @@ module.exports = function (senecaInstance, collector) {
             }
 
 
-            if(objectToModify.____transactionId){
+            if (objectToModify.____transactionId) {
                 console.log('incomming transaction', objectToModify.____transactionId)
             } else {
 
@@ -130,12 +148,21 @@ module.exports = function (senecaInstance, collector) {
             collector.reportOutgoingRequest(collectorObject);
 
 
-
             // only if sync
-            if(fnIndex !== void 0) {
-                arguments[fnIndex] = function() {
+            if (fnIndex !== void 0) {
+                arguments[fnIndex] = function () {
                     // this will be called whenever a result is available
-                    console.log('sync result available');
+                    console.log('sync result available:', arguments);
+                    if (arguments[0] === null && arguments[1] && arguments[1].____transactionId) {
+                        let responseTRID = arguments[1].____transactionId;
+                        const collectorObject = {};
+                        collectorObject[responseTRID] = arguments[2];
+                        collector.reportIncommingResponse(collectorObject);
+                        // cleanup
+                        delete arguments[1].____transactionId;
+                    }
+
+
                     return fnToPatch.apply(this, arguments);
                 };
             }
@@ -146,43 +173,14 @@ module.exports = function (senecaInstance, collector) {
 
 
     senecaInstance.ready(function () {
-        console.log('all done')
-        // console.log(senecaInstance.list())
-        // setInterval(function() {
-        //     senecaInstance.act('role:seneca,stats:true', function (err, stats) {
-        //         console.log('stats', err || stats)
-        //     });
-        // }, 2000);
-        let stuffIn = [];
-        let stuffOut = [];
-        setTimeout(function() {
-            senecaInstance.on('act-in', function () {
-                // console.log('act-in', arguments)
-                stuffIn.push(arguments[0]);
-            })
-            senecaInstance.on('act-out', function () {
-                // console.log('act-out', arguments)
-                stuffOut.push(arguments[0]);
-            })
-        });
-        // setTimeout(function() {
-        //     let strIn = JSON.stringify(stuffIn);
-        //     let strOut = JSON.stringify(stuffOut);
-        //     console.log(strIn)
-        //     console.log(strOut)
-        // }, 10000)
+        console.log('initializing done')
+
+
     });
 
     return senecaInstance;
 };
 
-function makeid()
-{
-    var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-    for( var i=0; i < 5; i++ )
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-
-    return text;
+function makeid() {
+    return uuid.v4();
 }
