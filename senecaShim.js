@@ -1,6 +1,10 @@
 'use strict';
 var hook = require('require-in-the-middle')
 var eventLoopStats = require('event-loop-stats');
+
+const collector = require('./collector')();
+const reporter = require('./reporter');
+
 setInterval(function(){
     console.log();
 }, 1000)
@@ -17,7 +21,9 @@ module.exports.start = function(opts) {
             console.log('seneca was instantiated');
             let senecaInstance = _exports.apply(this, arguments);
 
-            require('./senecaShimModule')(senecaInstance, 'asd', 'asd')
+            reporter(opts, collector);
+
+            require('./senecaShimModule')(senecaInstance, collector)
             
             return senecaInstance;
         };
