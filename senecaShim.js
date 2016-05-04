@@ -20,7 +20,9 @@ module.exports.start = function(opts) {
         exports = function patchedSeneca() {
             console.log('seneca was instantiated');
             let senecaInstance = _exports.apply(this, arguments);
-
+            senecaInstance.ready(function() {
+                collector.flush();
+            });
             reporter(opts, collector);
 
             require('./senecaShimModule')(senecaInstance, collector)
