@@ -10,7 +10,7 @@ module.exports = function reporter(config, _collector) {
 
     collector = _collector;
 
-    setInterval(report, 10000);
+    setInterval(report, 25000);
 
     return {
         report
