@@ -1,6 +1,11 @@
 'use strict';
 var hook = require('require-in-the-middle')
 var eventLoopStats = require('event-loop-stats');
+const uuid = require('node-uuid');
+
+
+const cls = require('continuation-local-storage');
+
 
 const collector = require('./collector')();
 const reporter = require('./reporter');
@@ -12,6 +17,24 @@ setInterval(function(){
 
 module.exports.start = function(opts) {
     //console.log('lets create some hooks', opts);
+
+    const namespace = cls.createNamespace('test');
+
+    const namespaceFns = {
+        setTransactionId: function(tid) {
+            return namespace.set('tid', tid);
+        },
+        getTransactionId: function() {
+            return namespace.get('tid');
+        },
+        generateTransactionId: function makeid() {
+            return uuid.v4();
+        },
+        bind: function(fn) {
+            return namespace.bind(fn)
+        }
+    };
+
 
     hook('seneca', function (exports, name, basedir) {
         console.log('shimming', name, basedir);
@@ -25,7 +48,7 @@ module.exports.start = function(opts) {
             });
             reporter(opts, collector);
 
-            require('./senecaShimModule')(senecaInstance, collector)
+            require('./senecaShimModule')(senecaInstance, collector, namespaceFns)
             
             return senecaInstance;
         };
