@@ -2,10 +2,23 @@
 
 var shimmer = require('shimmer');
 const util = require('util');
-const uuid = require('node-uuid');
 
+const _ = require('lodash');
 
-module.exports = function (senecaInstance, collector) {
+let lastSeen = {};
+
+function isMyOwnCall(args, lastSeen) {
+    for (var key in lastSeen) {
+        if (!args.hasOwnProperty(key) || args[key] !== lastSeen[key]) {
+            return false;
+        }
+    }
+    return true;
+
+}
+let FNNAME_BLACKLIST = ['transport_client', 'hook_client', 'add_client', 'plugin_definition', 'web_use', 'push'];
+
+module.exports = function (senecaInstance, collector, transactionStuff) {
     console.log('wrapping senecaInstance');
     shimmer.wrap(senecaInstance, 'add', function (original) {
         console.log('shimming seneca.add');
@@ -18,15 +31,40 @@ module.exports = function (senecaInstance, collector) {
             if (typeof arguments[1] === 'function') {
                 // preserve original request handler
                 let originalHandler = arguments[1];
-                // overrid original request handler
+                // override original request handler
                 arguments[1] = function (args, callback) {
+
+
+                    if (args && (args.config || args.type === 'web' || args.type === 'balance')) {
+                        return originalHandler.apply(this, arguments);
+                    }
+
+                    // TODO: refactor this
+                    if (FNNAME_BLACKLIST.indexOf(originalHandler.name) !== -1 || isMyOwnCall(arguments[0], lastSeen) || (arguments[0].transport && lastSeen.transport && arguments[0].transport.origin === lastSeen.transport.origin)) {
+                        console.log(cyan('rejecting this. I dont want to handle this act: ' + JSON.stringify(arguments[0])));
+                        return originalHandler.apply(this, arguments);
+                    } else {
+                        console.log(cyan('NOT rejecting this. I want to handle this act: ' + JSON.stringify(arguments[0])));
+
+                    }
+
+                    console.log();
+                    console.log();
+                    console.log(red2('incomming request: ' + JSON.stringify(args)))
+                    console.log();
+                    console.log();
+
+
                     // someone wants us to act
+                    // console.log('someone wants us to act, und dabei kommt an:', args);
                     const doReport = !!(args.____transactionId && args.transport$)
-                    console.log('new incomming request', 'reporting?', doReport);
+                    // console.log('new incomming request', 'reporting?', doReport, args.____transactionId, transactionStuff.getTransactionId());
 
                     if (doReport) {
 
                         let incommingTransactionId = args.____transactionId;
+
+                        transactionStuff.setTransactionId(incommingTransactionId);
 
                         const collectorObject = {};
                         collectorObject[incommingTransactionId] = args;
@@ -37,7 +75,7 @@ module.exports = function (senecaInstance, collector) {
                         arguments[1] = function (err, data) {
                             if (!err && data) {
                                 data.____transactionId = incommingTransactionId;
-                                console.log('intercepting outgoing response', arguments);
+                                // console.log('intercepting outgoing response', arguments);
                                 let outGoingResp = {};
                                 outGoingResp[incommingTransactionId] = data;
                                 collector.reportOutgoingResponse(outGoingResp);
@@ -72,16 +110,20 @@ module.exports = function (senecaInstance, collector) {
         return function (/*pattern, [[data], [callback]]*/) {
 
 
-            if (arguments[0].____transactionId) {
-                console.log('____transactionId is available, patching nothing')
+
+            if(arguments[0] && (arguments[0].config || arguments[0].type === 'web' || arguments[0].type === 'balance' || arguments[0] === 'role:transport,cmd:client' /*|| (typeof arguments[0] === 'string' && arguments[0].includes('role:transport'))*/)) {
+                console.log('returning act')
                 return original.apply(this, arguments);
             }
 
-            // client calls act, create transactionId for this transaction
-            let transactionId = makeid();
 
-            console.log('creating transaction:', transactionId);
-            // console.log('act was called', '#1', arguments, transactionId);
+            console.log()
+            console.log()
+            console.log(red('process is calling act: ' + (arguments[0] && (arguments[0].config || arguments[0].type === 'web' || arguments[0].type === 'balance')) + JSON.stringify(arguments[0])));
+            lastSeen = arguments[0];
+            console.log()
+            console.log()
+
             let objectToModify = {};
             let fnToPatch = function () {
             };
@@ -91,19 +133,19 @@ module.exports = function (senecaInstance, collector) {
             // async call only with pattern
             if (arguments.length === 1) {
 
-                console.log('act call:', 'async call only with pattern');
+                // console.log('act call:', 'async call only with pattern');
 
                 if (typeof arguments[0] === 'object') {
                     objectToModify = arguments[0];
                 } else if (typeof arguments[0] === 'string') {
-                    console.log('uff, TODO, add data to string')
+                    // console.log('uff, TODO, add data to string')
                 }
             }
 
             // async call with pattern and data
             if (arguments.length === 2 && typeof arguments[1] === 'object') {
 
-                console.log('act call:', 'async call with pattern and data');
+                // console.log('act call:', 'async call with pattern and data');
 
                 objectToModify = arguments[1];
             }
@@ -111,7 +153,7 @@ module.exports = function (senecaInstance, collector) {
             // sync call with pattern and callback (most likely)
             if (arguments.length === 2 && typeof arguments[1] === 'function') {
 
-                console.log('act call:', 'sync call with pattern and callback (likely)');
+                // console.log('act call:', 'sync call with pattern and callback (likely)');
 
                 fnToPatch = arguments[1];
                 fnIndex = 1;
@@ -127,39 +169,72 @@ module.exports = function (senecaInstance, collector) {
             // sync call with pattern, data and callback
             if (arguments.length === 3 && typeof arguments[1] === 'object' && typeof arguments[2] === 'function') {
 
-                console.log('act call:', 'sync call with pattern, data and callback');
+                // console.log('act call:', 'sync call with pattern, data and callback');
 
                 objectToModify = arguments[1];
                 fnToPatch = arguments[2];
                 fnIndex = 2;
             }
 
+            let localTid = transactionStuff.getTransactionId();
+            let transactionId;
+            let wasOutgoing = false;
 
-            if (objectToModify.____transactionId) {
-                console.log('incomming transaction', objectToModify.____transactionId)
+
+            if (objectToModify.____transactionId || localTid) {
+                transactionId = objectToModify.____transactionId || localTid;
+                if (!objectToModify.____transactionId) {
+                    transactionStuff.setTransactionId(transactionId);
+                }
+                if(localTid) {
+                    wasOutgoing = true;
+                    const collectorObject = {};
+                    collectorObject[transactionId] = objectToModify;
+                    collector.reportOutgoingRequest(collectorObject);
+                }
+                objectToModify.____transactionId = objectToModify.____transactionId || transactionId;
+                // console.log(red2('ich würde jetzt outgoing request loggen ' + JSON.stringify(objectToModify)));
+
+                // console.log('incomming transaction', arguments[0],transactionId)
             } else {
+                transactionId = transactionStuff.generateTransactionId()
 
-                objectToModify.____transactionId = transactionId
+                // console.log('setting transactionid', transactionId);
+                objectToModify.____transactionId = transactionId;
+                // transactionStuff.setTransactionId(transactionId);
+
+                const collectorObject = {};
+                collectorObject[transactionId] = objectToModify;
+                collector.reportOutgoingRequest(collectorObject);
+                wasOutgoing = true;
             }
-
-            const collectorObject = {};
-            collectorObject[transactionId] = objectToModify;
-
-            collector.reportOutgoingRequest(collectorObject);
 
 
             // only if sync
             if (fnIndex !== void 0) {
                 arguments[fnIndex] = function () {
+
+                    console.log()
+                    console.log()
+                    console.log(red('process is receiving response ' + JSON.stringify(arguments)));
+                    console.log()
+                    console.log()
+
+
                     // this will be called whenever a result is available
-                    console.log('sync result available:', arguments);
-                    if (arguments[0] === null && arguments[1] && arguments[1].____transactionId) {
+                    //console.log('sync result available:', arguments);
+                    if (wasOutgoing && arguments[0] === null && arguments[1] && arguments[1].____transactionId) {
+
                         let responseTRID = arguments[1].____transactionId;
+                        // console.log('verrrriiiiii \t', transactionStuff.getTransactionId())
+                        // console.log('verrrriiiiii \t', responseTRID)
                         const collectorObject = {};
-                        collectorObject[responseTRID] = arguments[2];
+                        collectorObject[transactionStuff.getTransactionId() + ''] = arguments[2];
                         collector.reportIncommingResponse(collectorObject);
                         // cleanup
                         delete arguments[1].____transactionId;
+                    } else {
+                        // console.log('sync result not reportable, something local');
                     }
 
 
@@ -167,7 +242,12 @@ module.exports = function (senecaInstance, collector) {
                 };
             }
 
-            return original.apply(this, arguments);
+            function addSession() {
+                transactionStuff.setTransactionId(transactionId)
+                return original.apply(this, arguments)
+            }
+
+            return transactionStuff.bind(addSession).apply(this, arguments);
         }
     });
 
@@ -181,6 +261,13 @@ module.exports = function (senecaInstance, collector) {
     return senecaInstance;
 };
 
-function makeid() {
-    return uuid.v4();
+
+function red(text) {
+    return '\x1b[31m' + text + '\x1b[0m';
+}
+function red2(text) {
+    return '\x1b[41m' + text + '\x1b[0m';
+}
+function cyan(text) {
+    return '\x1b[36m' + text + '\x1b[0m';
 }
