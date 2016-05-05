@@ -8,6 +8,7 @@ const cls = require('continuation-local-storage');
 
 
 const collector = require('./collector')();
+const Agent = require('./agent');
 const reporter = require('./reporter');
 
 setInterval(function(){
@@ -17,6 +18,8 @@ setInterval(function(){
 
 module.exports.start = function(opts) {
     //console.log('lets create some hooks', opts);
+
+    const agent = new Agent(opts);
 
     const namespace = cls.createNamespace('test');
 
@@ -48,7 +51,7 @@ module.exports.start = function(opts) {
             });
             reporter(opts, collector);
 
-            require('./senecaShimModule')(senecaInstance, collector, namespaceFns)
+            require('./senecaShimModule')(senecaInstance, agent, collector, namespaceFns)
             
             return senecaInstance;
         };
