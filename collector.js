@@ -29,12 +29,12 @@ function reportOutgoingRequest(todo) {
 }
 
 function reportIncommingResponse(todo) {
-    console.log('add incomming request to report');
+    console.log('add incomming response to report');
     collectionResponseIn.push(todo);
 }
 
 function reportOutgoingResponse(todo) {
-    console.log('add outgoing request to report');
+    console.log('add outgoing response to report');
     collectionResponseOut.push(todo);
 }
 
