@@ -1,13 +1,13 @@
 'use strict';
 
+const debug = require('debug')('collector');
+
 const collectionRequestIn = [];
 const collectionRequestOut = [];
 const collectionResponseIn = [];
 const collectionResponseOut = [];
 
 module.exports = function(options) {
-
-    
 
     return {
         reportIncommingRequest,
@@ -19,26 +19,27 @@ module.exports = function(options) {
 };
 
 function reportIncommingRequest(todo) {
-    console.log('add incomming request to report');
+    debug('add incomming request to report');
     collectionRequestIn.push(todo);
 }
 
 function reportOutgoingRequest(todo) {
-    console.log('add outgoing request to report');
+    debug('add outgoing request to report');
     collectionRequestOut.push(todo);
 }
 
 function reportIncommingResponse(todo) {
-    console.log('add incomming response to report');
+    debug('add incomming response to report');
     collectionResponseIn.push(todo);
 }
 
 function reportOutgoingResponse(todo) {
-    console.log('add outgoing response to report');
+    debug('add outgoing response to report');
     collectionResponseOut.push(todo);
 }
 
 function flush() {
+    debug('flushing collections');
     const snapshot = {
         inRequest: collectionRequestIn.slice(0),
         outRequest: collectionRequestOut.slice(0),
