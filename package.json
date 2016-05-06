@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "continuation-local-storage": "^3.1.7",
+    "debug": "^2.2.0",
     "event-loop-stats": "^1.0.0",
     "hapi": "^13.3.0",
     "jsonic": "^0.2.2",
