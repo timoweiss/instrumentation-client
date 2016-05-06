@@ -19,6 +19,11 @@ setInterval(function(){
 module.exports.start = function(opts) {
     //console.log('lets create some hooks', opts);
 
+
+    // TODO: handle on exit, send remaining data + closing msg sync to server
+    // TODO: send welcome message to server
+    // TODO: send ping to server?
+
     const agent = new Agent(opts);
 
     const namespace = cls.createNamespace('test');
