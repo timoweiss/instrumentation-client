@@ -60,29 +60,53 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
             function wrappedHandler(request, callback) {
 
-
+                let transaction_id;
+                let incommingTracingData;
 
                 console.log(red2('[incomming request]:'), request)
                 if(request.__tracing_data) {
-                    console.log('tracing data available for incomming request', JSON.stringify(request));
+                    console.log('tracing data available for incomming request, setting transaction_id for context', request.__tracing_data.transaction_id);
                     //request.__tracing_data.
-
+                    transaction_id = request.__tracing_data.transaction_id;
+                    incommingTracingData = request.__tracing_data;
+                    delete request.__tracing_data;
+                } else {
+                    console.log('generating new transactionId');
+                    transaction_id = transactionStuff.generateTransactionId();
                 }
 
                 let origCb = arguments[arguments.length - 1];
+
+                // function the user calls to emit the result
                 arguments[arguments.length - 1] = function responseCallback(err, data) {
-                    if(!arguments[0] && arguments[1]) {
-                        console.log(red2('decorate response'));
-                        arguments[1].__tracing_data = request.__tracing_data || 'scheißhaufen';
+
+                    if(!err && data) {
+                        console.log(red2('decorate response'), incommingTracingData);
+                        arguments[1].__tracing_data = incommingTracingData; //transactionStuff.getTransactionId();
                     }
+
+                    // TODO: report outgoing response
+                    collector.reportOutgoingResponse(arguments[1]);
+
                     return origCb.apply(this, arguments);
                 };
 
+                function addSession() {
+                    transactionStuff.setTransactionId(transaction_id);
+                    return origCallbackFn.apply(this, arguments)
 
-                return origCallbackFn.apply(this, arguments);
+                }
+
+                // TODO: report incomming request
+                collector.reportIncommingRequest(incommingTracingData);
+
+
+                return transactionStuff.bind(addSession).apply(this, arguments);
+
+
             }
 
-            // reasable arguments object
+            // reassemble arguments object
             args.push(wrappedHandler);
 
             if(pluginDefinition) {
@@ -90,89 +114,11 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             }
 
 
+
             return original.apply(this, args);
 
 
-            // check for handler cb
-            if (typeof arguments[1] === 'function') {
-                // preserve original request handler
-                let originalHandler = arguments[1];
-                // override original request handler
-                arguments[1] = function (args, callback) {
 
-                    if(args.___process_id && args.___process_id.length <= 1) {
-                        console.log(red2('reject due'))
-                        return originalHandler.apply(this, arguments);
-
-                    }
-
-
-                    if (args && (args.config || args.type === 'web' || args.type === 'balance')) {
-                        return originalHandler.apply(this, arguments);
-                    }
-
-                    // TODO: refactor this
-                    if (FNNAME_BLACKLIST.indexOf(originalHandler.name) !== -1 || isMyOwnCall(arguments[0], lastSeen) || (arguments[0].transport && lastSeen.transport && arguments[0].transport.origin === lastSeen.transport.origin)) {
-                        console.log(cyan('rejecting this. I dont want to handle this act: ' + JSON.stringify(arguments[0])), process.pid);
-                        return originalHandler.apply(this, arguments);
-                    } else {
-                        console.log(cyan('NOT rejecting this. I want to handle this act: ' + JSON.stringify(arguments[0])), process.pid);
-
-                    }
-
-                    console.log();
-                    console.log();
-                    console.log(red2('incomming request: ' + JSON.stringify(args)))
-                    console.log();
-                    console.log();
-
-
-                    // someone wants us to act
-                    // console.log('someone wants us to act, und dabei kommt an:', args);
-                    const doReport = !!(args.____transactionId && args.transport$)
-                    // console.log('new incomming request', 'reporting?', doReport, args.____transactionId, transactionStuff.getTransactionId());
-
-                    if (doReport) {
-
-                        let incommingTransactionId = args.____transactionId;
-
-                        transactionStuff.setTransactionId(incommingTransactionId);
-
-                        const collectorObject = {};
-                        collectorObject[incommingTransactionId] = args;
-
-                        collector.reportIncommingRequest(collectorObject);
-
-                        let originalCallback = callback;
-                        arguments[1] = function (err, data) {
-                            if (!err && data) {
-                                data.____transactionId = incommingTransactionId;
-                                // console.log('intercepting outgoing response', arguments);
-                                let outGoingResp = {};
-                                outGoingResp[incommingTransactionId] = data;
-                                collector.reportOutgoingResponse(outGoingResp);
-
-                            }
-                            return originalCallback.apply(this, arguments);
-                        }
-
-                    }
-
-                    // call original implementation
-                    return originalHandler.apply(this, arguments);
-                }
-            }
-
-            // if(typeof arguments[0] === 'string') {
-            //     str = arguments[0];
-            // } else {
-            //     str = arguments[0].role || arguments[0].init || '';
-            // }
-            // let isFromSeneca = str.includes('web') || str.includes('transport')  || str.includes('basic') || str.includes('util') || str.includes('entity') || str.includes('seneca') || str.includes('mem-store');
-            // if (!isFromSeneca) {
-            //     // console.log('something other:', arguments)
-            // }
-            return original.apply(this, arguments);
         }
     });
     //
@@ -180,6 +126,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
         console.log('shimming seneca.act');
 
         return function (/*pattern, [[data], [callback]]*/) {
+
+            console.log(red2('is there already a transaction:'), transactionStuff.getTransactionId());
 
             const args = Array.prototype.slice.apply(arguments);
 
@@ -258,6 +206,11 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     console.log(red('process is receiving response ' + JSON.stringify(arguments)));
                     console.log()
                     console.log()
+
+                    const collectorObject = {};
+                    // TODO: there is a object with meta info in arguments[2]
+                    collectorObject[transactionStuff.getTransactionId() + ''] = arguments[1];
+                    collector.reportIncommingResponse(collectorObject);
 
 
                     // this will be called whenever a result is available
