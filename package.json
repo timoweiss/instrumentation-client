@@ -13,6 +13,7 @@
     "event-loop-stats": "^1.0.0",
     "hapi": "^13.3.0",
     "jsonic": "^0.2.2",
+    "microtime": "^2.1.1",
     "node-uuid": "^1.4.7",
     "require-in-the-middle": "^2.1.0",
     "shimmer": "^1.1.0"
