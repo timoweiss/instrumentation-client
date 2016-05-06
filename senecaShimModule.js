@@ -131,7 +131,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     time_took: null,
                     service_information: agent.getServiceInformation(),
                     type: 'request_rx',
-                    meta_infomation: arguments
+                    meta_infomation: arguments[0].meta$,
+                    transport_infomation: arguments[0].transport$
                 });
 
 
