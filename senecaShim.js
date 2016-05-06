@@ -30,7 +30,16 @@ module.exports.start = function(opts) {
         getTransactionId: function() {
             return namespace.get('tid');
         },
+        setRequestId: function(tid) {
+            return namespace.set('rid', tid);
+        },
+        getRequestId: function() {
+            return namespace.get('rid');
+        },
         generateTransactionId: function makeid() {
+            return uuid.v4();
+        },
+        generateRequestId: function makeid() {
             return uuid.v4();
         },
         bind: function(fn) {
