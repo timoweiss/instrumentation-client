@@ -26,7 +26,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
             let pluginDefinition = args.pop();
             let origCallbackFn;
-
+            // seneca add some plugin information, but if not, fix the vars
             if(typeof pluginDefinition === 'function') {
                 origCallbackFn = pluginDefinition;
                 pluginDefinition = void 0;
@@ -39,6 +39,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             const pattern = args[0];
 
 
+            // lots of noise needs to be filtered
             if(patternMatchedSenecaNative(pattern)) {
                 debugMain('rejecting pattern, dont install interceptors');
                 return original.apply(this, arguments);
@@ -46,24 +47,28 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 debugMain('patching pattern, install interceptors', pattern);
             }
 
-
+            // TODO: handle, but this should never happen
             if(!origCallbackFn) throw new Error('no nix da callback');
 
-
+            // this will be the intercepting request handler
             function wrappedHandler(request, callback) {
 
                 let transaction_id;
                 let incommingTracingData;
 
-                debugRxReq('[incomming request]:', request);
+                debugRxReq(request);
 
                 if(request.__tracing_data) {
-                    debugRxReq('tracing data available for incomming request, setting transaction_id for context', request.__tracing_data.transaction_id);
-                    //request.__tracing_data.
+                    debugRxReq('tracing data available for incomming request');
+                    debugRxReq('setting transaction_id for context', request.__tracing_data.transaction_id);
+
                     transaction_id = request.__tracing_data.transaction_id;
                     incommingTracingData = request.__tracing_data;
+
+                    // remove tracing data to hide it from the user
                     delete request.__tracing_data;
                 } else {
+                    debugRxReq(red2('the request was not from anther traced seneca-instance'));
                     debugRxReq('generating new transactionId');
                     transaction_id = transactionStuff.generateTransactionId();
                 }
@@ -73,8 +78,14 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 // function the user calls to emit the result
                 arguments[arguments.length - 1] = function responseCallback(err, data) {
 
+                    if(err) {
+                        debugTxRes(red2('TODO: error in response callback'), err);
+                    }
+
+
                     if(!err && data) {
                         debugTxRes(red2('decorate response'), incommingTracingData);
+                        // add tracing data back on
                         arguments[1].__tracing_data = incommingTracingData; //transactionStuff.getTransactionId();
                     }
 
