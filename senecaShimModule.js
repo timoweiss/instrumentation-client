@@ -54,6 +54,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             function wrappedHandler(request, callback) {
                 let timeStart = agent.whatTimeIsIt();
                 debugRxReq('incoming request at:', timeStart);
+                console.log(red2(JSON.stringify(request)));
 
                 let transaction_id;
                 let request_id;
@@ -110,7 +111,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                         time_took: timeTook,
                         service_information: agent.getServiceInformation(),
                         type: 'response_tx',
-                        meta_infomation: arguments
+                        hasError: !!arguments[0],
+                        meta_infomation: arguments[0] || arguments[1]
                     });
 
                     return origCb.apply(this, arguments);
@@ -254,7 +256,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                         time_took: timeTook,
                         service_information: agent.getServiceInformation(),
                         type: 'response_rx',
-                        meta_infomation: arguments
+                        hasError: !!arguments[0],
+                        meta_infomation: arguments[2] || arguments[1]
                     });
 
 
