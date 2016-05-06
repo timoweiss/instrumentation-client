@@ -1,11 +1,13 @@
 'use strict';
 
+const microtime = require('microtime');
+
 
 function Agent(config) {
     this.application_id = config.application_id;
     this.service_name = config.service_name;
     this.orga_id = config.orga_id;
-};
+}
 
 Agent.prototype.getServiceInformation = function _getServiceInformation() {
     return {
@@ -16,6 +18,10 @@ Agent.prototype.getServiceInformation = function _getServiceInformation() {
             pid: process.pid
         }
     }
+};
+
+Agent.prototype.whatTimeIsIt = function getMillis() {
+    return microtime.now();
 };
 
 module.exports = Agent;
