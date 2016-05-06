@@ -5,21 +5,13 @@ const util = require('util');
 
 const jsonic = require('jsonic');
 
-let lastSeen = {};
-
-function isMyOwnCall(args, lastSeen) {
-    for (var key in lastSeen) {
-        if (!args.hasOwnProperty(key) || args[key] !== lastSeen[key]) {
-            return false;
-        }
-    }
-    return true;
-
-}
-let FNNAME_BLACKLIST = ['transport_client', 'hook_client', 'add_client', 'plugin_definition', 'web_use', 'push'];
-
 module.exports = function (senecaInstance, agent, collector, transactionStuff) {
     console.log('wrapping senecaInstance');
+
+
+    // shimming add call
+    // callback of add is the request handler
+    // the callback of the request handler is the response-fn
     shimmer.wrap(senecaInstance, 'add', function (original) {
         console.log('shimming seneca.add');
         return function () {
@@ -121,7 +113,9 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
         }
     });
-    //
+
+
+    // shimming act function (act call => request)
     shimmer.wrap(senecaInstance, 'act', function (original) {
         console.log('shimming seneca.act');
 
@@ -155,15 +149,6 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 console.log(red2('TODO:'), 'is dat safe? i\'m ignoring an act call because of it\'s transport$ prop', JSON.stringify(arguments));
                 // return original.apply(this, arguments);
             }
-
-
-            console.log();
-            console.log();
-            console.log(red2('[patched act]: setting last seen object'), JSON.stringify(pattern));
-            lastSeen = arguments[0];
-            console.log();
-            console.log();
-
 
             // get and set tracing data
 
