@@ -56,6 +56,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 debugRxReq('incoming request at:', timeStart);
 
                 let transaction_id;
+                let request_id;
                 let incomingTracingData;
 
                 debugRxReq(request);
@@ -65,14 +66,18 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     debugRxReq('setting transaction_id for context', request.__tracing_data.transaction_id);
 
                     transaction_id = request.__tracing_data.transaction_id;
+                    request_id = request.__tracing_data.request_id;
                     incomingTracingData = request.__tracing_data;
 
                     // remove tracing data to hide it from the user
                     delete request.__tracing_data;
                 } else {
                     debugRxReq(red2('the request was not from another traced seneca-instance'));
+                    throw new Error('TODO: acting client hasnt set any tracing_data');
                     debugRxReq('generating new transactionId');
                     transaction_id = transactionStuff.generateTransactionId();
+                    // TODO: what if the actor doesnt add a request_id
+                    request_id = null;
                 }
 
                 let origCb = arguments[arguments.length - 1];
@@ -97,19 +102,37 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     }
 
                     // TODO: report outgoing response
-                    collector.reportOutgoingResponse(arguments[1]);
+                    collector.reportOutgoingResponse({
+                        transaction_id: transaction_id,
+                        request_id: request_id,
+                        time_start: timeStart,
+                        time_end: timeEnd,
+                        time_took: timeTook,
+                        service_information: agent.getServiceInformation(),
+                        type: 'response_tx',
+                        meta_infomation: arguments
+                    });
 
                     return origCb.apply(this, arguments);
                 };
 
                 function addSession() {
                     transactionStuff.setTransactionId(transaction_id);
+                    transactionStuff.setRequestId(request_id);
                     return origCallbackFn.apply(this, arguments)
 
                 }
 
-                // TODO: report incoming request
-                collector.reportIncomingRequest(incomingTracingData);
+                collector.reportIncomingRequest({
+                    transaction_id: transaction_id,
+                    request_id: request_id,
+                    time_start: timeStart,
+                    time_end: null,
+                    time_took: null,
+                    service_information: agent.getServiceInformation(),
+                    type: 'request_rx',
+                    meta_infomation: arguments
+                });
 
 
                 return transactionStuff.bind(addSession).apply(this, arguments);
@@ -139,6 +162,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
         return function (/*pattern, [[data], [callback]]*/) {
 
             const timeStart = agent.whatTimeIsIt();
+            const request_id = transactionStuff.generateRequestId();
+            let transaction_id = transactionStuff.getTransactionId();
 
             const args = Array.prototype.slice.apply(arguments);
 
@@ -150,7 +175,6 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             }
             const pattern = args[0];
 
-            let transaction_id;
 
             if (patternMatchedSenecaNative(pattern)) {
                 return original.apply(this, arguments);
@@ -166,12 +190,13 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 debugTxReq(red2('TODO:'), 'is dat safe? i\'m ignoring an act call because of it\'s transport$ prop', JSON.stringify(arguments));
                 // return original.apply(this, arguments);
             }
-
-            // get and set tracing data
-
+            
             if (pattern && pattern.__tracing_data) {
+
                 debugTxReq('tracing data already exists', pattern.__tracing_data);
+                throw new Error('this should happen')
                 transaction_id = pattern.__tracing_data.transaction_id;
+                pattern.__tracing_data.request_id = request_id;
                 // TODO: remove, only testing
                 if (!transaction_id) throw new Error('missing transaction_id');
 
@@ -179,22 +204,23 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 // this act call is new, decorate with tracing data
                 dataPattern.__tracing_data = {};
                 dataPattern.__tracing_data.initiator = agent.getServiceInformation();
+                if(!transaction_id) {
 
-                transaction_id = transactionStuff.getTransactionId();
-
-                if (!transaction_id) {
-                    debugTxReq('generating new transaction id')
-                    transaction_id = transactionStuff.generateTransactionId();
+                    transaction_id = request_id;
                 }
+
                 dataPattern.__tracing_data.transaction_id = transaction_id;
+                dataPattern.__tracing_data.request_id = request_id;
                 debugTxReq(red2('transaction_id set:'), transaction_id);
             }
 
 
             collector.reportOutgoingRequest({
                 transaction_id: transaction_id,
+                request_id: request_id,
                 time_start: timeStart,
                 time_end: null,
+                time_took: null,
                 service_information: agent.getServiceInformation(),
                 type: 'request_tx',
                 meta_infomation: dataPattern
@@ -210,7 +236,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 args.push(function patchendCallback() {
 
                     const timeEnd = agent.whatTimeIsIt();
-
+                    const timeTook = timeEnd - timeStart;
                     debugRxRes(red('process is receiving response ' + JSON.stringify(arguments)));
 
 
@@ -221,10 +247,12 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                     collector.reportIncomingResponse({
                         transaction_id: transaction_id,
+                        request_id: request_id,
                         time_start: timeStart,
                         time_end:timeEnd,
+                        time_took: timeTook,
                         service_information: agent.getServiceInformation(),
-                        type: 'request_tx',
+                        type: 'response_rx',
                         meta_infomation: arguments
                     });
 
