@@ -2,25 +2,27 @@
 
 var shimmer = require('shimmer');
 const util = require('util');
+const debug = require('debug');
+const debugMain = debug('main');
+const debugRxReq = debug('receiving-request');
+const debugTxRes = debug('sending-response');
+const debugTxReq = debug('sending-request');
+const debugRxRes = debug('receiving-response');
+
 
 const jsonic = require('jsonic');
 
 module.exports = function (senecaInstance, agent, collector, transactionStuff) {
-    console.log('wrapping senecaInstance');
-
+    debugMain('wrapping senecaInstance');
 
     // shimming add call
     // callback of add is the request handler
     // the callback of the request handler is the response-fn
     shimmer.wrap(senecaInstance, 'add', function (original) {
-        console.log('shimming seneca.add');
+        debugMain('shimming seneca.add');
         return function () {
 
-            // console.log('seneca add called', arguments[0])
-
             const args = Array.prototype.slice.apply(arguments);
-
-            console.log(cyan('args length: ' + JSON.stringify(arguments[args.length-1])));
 
             let pluginDefinition = args.pop();
             let origCallbackFn;
@@ -38,12 +40,10 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
 
             if(patternMatchedSenecaNative(pattern)) {
-                // console.log('filtering pattern:', cyanBg(JSON.stringify(pattern)));
-                // untouched back
+                debugMain('rejecting pattern, dont install interceptors');
                 return original.apply(this, arguments);
             } else {
-                console.log(red2('[patched add]: accepting pattern for patching'));
-                console.log('adding pattern:', red2(JSON.stringify(pattern)));
+                debugMain('patching pattern, install interceptors', pattern);
             }
 
 
@@ -55,15 +55,16 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 let transaction_id;
                 let incommingTracingData;
 
-                console.log(red2('[incomming request]:'), request)
+                debugRxReq('[incomming request]:', request);
+
                 if(request.__tracing_data) {
-                    console.log('tracing data available for incomming request, setting transaction_id for context', request.__tracing_data.transaction_id);
+                    debugRxReq('tracing data available for incomming request, setting transaction_id for context', request.__tracing_data.transaction_id);
                     //request.__tracing_data.
                     transaction_id = request.__tracing_data.transaction_id;
                     incommingTracingData = request.__tracing_data;
                     delete request.__tracing_data;
                 } else {
-                    console.log('generating new transactionId');
+                    debugRxReq('generating new transactionId');
                     transaction_id = transactionStuff.generateTransactionId();
                 }
 
@@ -73,7 +74,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 arguments[arguments.length - 1] = function responseCallback(err, data) {
 
                     if(!err && data) {
-                        console.log(red2('decorate response'), incommingTracingData);
+                        debugTxRes(red2('decorate response'), incommingTracingData);
                         arguments[1].__tracing_data = incommingTracingData; //transactionStuff.getTransactionId();
                     }
 
@@ -117,11 +118,11 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
     // shimming act function (act call => request)
     shimmer.wrap(senecaInstance, 'act', function (original) {
-        console.log('shimming seneca.act');
+        debugMain('shimming seneca.act');
 
         return function (/*pattern, [[data], [callback]]*/) {
 
-            console.log(red2('is there already a transaction:'), transactionStuff.getTransactionId());
+            //debugTxReq(red2('is there already a transaction:'), transactionStuff.getTransactionId());
 
             const args = Array.prototype.slice.apply(arguments);
 
@@ -141,19 +142,19 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
 
             if(typeof origCallbackFn !== 'function') {
-                console.log(red2('TODO:'), 'no callback supplied (async)');
+                debugTxReq(red2('TODO:'), 'no callback supplied (async)');
                 return original.apply(this, arguments);
             }
 
             if(pattern.transport$) {
-                console.log(red2('TODO:'), 'is dat safe? i\'m ignoring an act call because of it\'s transport$ prop', JSON.stringify(arguments));
+                debugTxReq(red2('TODO:'), 'is dat safe? i\'m ignoring an act call because of it\'s transport$ prop', JSON.stringify(arguments));
                 // return original.apply(this, arguments);
             }
 
             // get and set tracing data
 
             if(pattern && pattern.__tracing_data) {
-                console.log('tracing data already exists', pattern.__tracing_data);
+                debugTxReq('tracing data already exists', pattern.__tracing_data);
                 transaction_id = pattern.__tracing_data.transaction_id;
                 // TODO: remove, only testing
                 if(!transaction_id) throw new Error('missing transaction_id');
@@ -166,11 +167,11 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 transaction_id = transactionStuff.getTransactionId();
 
                 if(!transaction_id) {
-                    console.log('generating new transaction id')
+                    debugTxReq('generating new transaction id')
                     transaction_id = transactionStuff.generateTransactionId();
                 }
                 dataPattern.__tracing_data.transaction_id = transaction_id;
-                console.log(red2('transaction_id set:'), transaction_id);
+                debugTxReq(red2('transaction_id set:'), transaction_id);
             }
 
             const collectorObject = {};
@@ -188,7 +189,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                     console.log()
                     console.log()
-                    console.log(red('process is receiving response ' + JSON.stringify(arguments)));
+                    debugRxRes(red('process is receiving response ' + JSON.stringify(arguments)));
                     console.log()
                     console.log()
 
@@ -198,31 +199,13 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     collector.reportIncommingResponse(collectorObject);
 
 
-                    // this will be called whenever a result is available
-                    //console.log('sync result available:', arguments);
-                    // if (wasOutgoing && arguments[0] === null && arguments[1] && arguments[1].____transactionId) {
-                    //
-                    //     let responseTRID = arguments[1].____transactionId;
-                    //     // console.log('verrrriiiiii \t', transactionStuff.getTransactionId())
-                    //     // console.log('verrrriiiiii \t', responseTRID)
-                    //     const collectorObject = {};
-                    //     collectorObject[transactionStuff.getTransactionId() + ''] = arguments[2];
-                    //     collector.reportIncommingResponse(collectorObject);
-                    //     // cleanup
-                    //     delete arguments[1].____transactionId;
-                    // } else {
-                    //     // console.log('sync result not reportable, something local');
-                    // }
-
-
                     return origCallbackFn.apply(this, arguments);
                 });
             }
 
             function addSession() {
-                transactionStuff.setTransactionId(transaction_id)
-                console.log(red2('raus geht scheinbar:'), JSON.stringify(arguments))
-                return original.apply(this, arguments)
+                transactionStuff.setTransactionId(transaction_id);
+                return original.apply(this, arguments);
 
             }
             return transactionStuff.bind(addSession).apply(this, args);
@@ -231,7 +214,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
 
     senecaInstance.ready(function () {
-        console.log('initializing done')
+        debugMain('initializing done')
 
 
     });
@@ -245,33 +228,33 @@ function patternMatchedSenecaNative(pattern) {
         return false;
     }
     if(pattern.local$) {
-        console.log('returning due local$');
+        debugMain('returning due local$');
         return true;
     }
 
     if(pattern.client$) {
-        console.log('returning due client$');
+        debugMain('returning due client$');
         return true;
     }
 
     if(pattern.deprecate$) {
-        console.log('returning due deprecate$');
+        debugMain('returning due deprecate$');
         return true;
     }
 
     if(pattern.transport$) {
-        console.log('returning due transport$');
+        debugMain('returning due transport$');
         return true;
     }
 
     // TODO: mesh and all the others ;)
     if(pattern.role === 'seneca' || pattern.role === 'basic' || pattern.role === 'transport' || pattern.role === 'web' || pattern.role === 'util' || pattern.role === 'entity' || pattern.role === 'mem-store') {
-        console.log('returning due role seneca, basic, transport, web, util, entity, mem-store');
+        debugMain('returning due role seneca, basic, transport, web, util, entity, mem-store');
         return true;
     }
 
     if(pattern.init) {
-        console.log('returning due init property');
+        debugMain('returning due init property');
         return true;
     }
     return false;
