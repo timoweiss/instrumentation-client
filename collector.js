@@ -10,16 +10,16 @@ const collectionResponseOut = [];
 module.exports = function(options) {
 
     return {
-        reportIncommingRequest,
+        reportIncomingRequest,
         reportOutgoingRequest,
-        reportIncommingResponse,
+        reportIncomingResponse,
         reportOutgoingResponse,
         flush
     }
 };
 
-function reportIncommingRequest(todo) {
-    debug('add incomming request to report');
+function reportIncomingRequest(todo) {
+    debug('add incoming request to report');
     collectionRequestIn.push(todo);
 }
 
@@ -28,8 +28,8 @@ function reportOutgoingRequest(todo) {
     collectionRequestOut.push(todo);
 }
 
-function reportIncommingResponse(todo) {
-    debug('add incomming response to report');
+function reportIncomingResponse(todo) {
+    debug('add incoming response to report');
     collectionResponseIn.push(todo);
 }
 

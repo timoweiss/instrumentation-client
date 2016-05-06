@@ -54,16 +54,16 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             function wrappedHandler(request, callback) {
 
                 let transaction_id;
-                let incommingTracingData;
+                let incomingTracingData;
 
                 debugRxReq(request);
 
                 if(request.__tracing_data) {
-                    debugRxReq('tracing data available for incomming request');
+                    debugRxReq('tracing data available for incoming request');
                     debugRxReq('setting transaction_id for context', request.__tracing_data.transaction_id);
 
                     transaction_id = request.__tracing_data.transaction_id;
-                    incommingTracingData = request.__tracing_data;
+                    incomingTracingData = request.__tracing_data;
 
                     // remove tracing data to hide it from the user
                     delete request.__tracing_data;
@@ -84,9 +84,9 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
 
                     if(!err && data) {
-                        debugTxRes(red2('decorate response'), incommingTracingData);
+                        debugTxRes(red2('decorate response'), incomingTracingData);
                         // add tracing data back on
-                        arguments[1].__tracing_data = incommingTracingData; //transactionStuff.getTransactionId();
+                        arguments[1].__tracing_data = incomingTracingData; //transactionStuff.getTransactionId();
                     }
 
                     // TODO: report outgoing response
@@ -101,8 +101,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 }
 
-                // TODO: report incomming request
-                collector.reportIncommingRequest(incommingTracingData);
+                // TODO: report incoming request
+                collector.reportIncomingRequest(incomingTracingData);
 
 
                 return transactionStuff.bind(addSession).apply(this, arguments);
@@ -207,7 +207,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     const collectorObject = {};
                     // TODO: there is a object with meta info in arguments[2]
                     collectorObject[transactionStuff.getTransactionId() + ''] = arguments[1];
-                    collector.reportIncommingResponse(collectorObject);
+                    collector.reportIncomingResponse(collectorObject);
 
 
                     return origCallbackFn.apply(this, arguments);
