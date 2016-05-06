@@ -68,7 +68,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     // remove tracing data to hide it from the user
                     delete request.__tracing_data;
                 } else {
-                    debugRxReq(red2('the request was not from anther traced seneca-instance'));
+                    debugRxReq(red2('the request was not from another traced seneca-instance'));
                     debugRxReq('generating new transactionId');
                     transaction_id = transactionStuff.generateTransactionId();
                 }
