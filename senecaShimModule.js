@@ -27,7 +27,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             let pluginDefinition = args.pop();
             let origCallbackFn;
             // seneca add some plugin information, but if not, fix the vars
-            if(typeof pluginDefinition === 'function') {
+            if (typeof pluginDefinition === 'function') {
                 origCallbackFn = pluginDefinition;
                 pluginDefinition = void 0;
             } else {
@@ -40,7 +40,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
 
             // lots of noise needs to be filtered
-            if(patternMatchedSenecaNative(pattern)) {
+            if (patternMatchedSenecaNative(pattern)) {
                 debugMain('rejecting pattern, dont install interceptors');
                 return original.apply(this, arguments);
             } else {
@@ -48,17 +48,19 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             }
 
             // TODO: handle, but this should never happen
-            if(!origCallbackFn) throw new Error('no nix da callback');
+            if (!origCallbackFn) throw new Error('no nix da callback');
 
             // this will be the intercepting request handler
             function wrappedHandler(request, callback) {
+                let timeStart = agent.whatTimeIsIt();
+                debugRxReq('incoming request at:', timeStart);
 
                 let transaction_id;
                 let incomingTracingData;
 
                 debugRxReq(request);
 
-                if(request.__tracing_data) {
+                if (request.__tracing_data) {
                     debugRxReq('tracing data available for incoming request');
                     debugRxReq('setting transaction_id for context', request.__tracing_data.transaction_id);
 
@@ -77,13 +79,18 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 // function the user calls to emit the result
                 arguments[arguments.length - 1] = function responseCallback(err, data) {
+                    let timeEnd = agent.whatTimeIsIt();
+                    debugTxRes('outgoing response at:', timeEnd);
 
-                    if(err) {
+                    let timeTook = timeEnd - timeStart;
+                    debugTxRes('time took generating response:', timeTook);
+
+                    if (err) {
                         debugTxRes(red2('TODO: error in response callback'), err);
                     }
 
 
-                    if(!err && data) {
+                    if (!err && data) {
                         debugTxRes(red2('decorate response'), incomingTracingData);
                         // add tracing data back on
                         arguments[1].__tracing_data = incomingTracingData; //transactionStuff.getTransactionId();
@@ -113,14 +120,12 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             // reassemble arguments object
             args.push(wrappedHandler);
 
-            if(pluginDefinition) {
+            if (pluginDefinition) {
                 args.push(pluginDefinition);
             }
 
 
-
             return original.apply(this, args);
-
 
 
         }
@@ -133,42 +138,42 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
         return function (/*pattern, [[data], [callback]]*/) {
 
-            //debugTxReq(red2('is there already a transaction:'), transactionStuff.getTransactionId());
+            const timeStart = agent.whatTimeIsIt();
 
             const args = Array.prototype.slice.apply(arguments);
 
             args[0] = jsonic(args[0]);
             const origCallbackFn = args.pop();
             let dataPattern = {};
-            if(arguments.length === 3) {
+            if (arguments.length === 3) {
                 dataPattern = args.pop();
             }
             const pattern = args[0];
 
             let transaction_id;
 
-            if(patternMatchedSenecaNative(pattern)) {
+            if (patternMatchedSenecaNative(pattern)) {
                 return original.apply(this, arguments);
             }
 
 
-            if(typeof origCallbackFn !== 'function') {
+            if (typeof origCallbackFn !== 'function') {
                 debugTxReq(red2('TODO:'), 'no callback supplied (async)');
                 return original.apply(this, arguments);
             }
 
-            if(pattern.transport$) {
+            if (pattern.transport$) {
                 debugTxReq(red2('TODO:'), 'is dat safe? i\'m ignoring an act call because of it\'s transport$ prop', JSON.stringify(arguments));
                 // return original.apply(this, arguments);
             }
 
             // get and set tracing data
 
-            if(pattern && pattern.__tracing_data) {
+            if (pattern && pattern.__tracing_data) {
                 debugTxReq('tracing data already exists', pattern.__tracing_data);
                 transaction_id = pattern.__tracing_data.transaction_id;
                 // TODO: remove, only testing
-                if(!transaction_id) throw new Error('missing transaction_id');
+                if (!transaction_id) throw new Error('missing transaction_id');
 
             } else {
                 // this act call is new, decorate with tracing data
@@ -177,7 +182,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 transaction_id = transactionStuff.getTransactionId();
 
-                if(!transaction_id) {
+                if (!transaction_id) {
                     debugTxReq('generating new transaction id')
                     transaction_id = transactionStuff.generateTransactionId();
                 }
@@ -185,9 +190,15 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 debugTxReq(red2('transaction_id set:'), transaction_id);
             }
 
-            const collectorObject = {};
-            collectorObject[transaction_id] = dataPattern;
-            collector.reportOutgoingRequest(collectorObject);
+
+            collector.reportOutgoingRequest({
+                transaction_id: transaction_id,
+                time_start: timeStart,
+                time_end: null,
+                service_information: agent.getServiceInformation(),
+                type: 'request_tx',
+                meta_infomation: dataPattern
+            });
 
 
             args[0] = pattern;
@@ -198,16 +209,24 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 args.push(function patchendCallback() {
 
-                    console.log()
-                    console.log()
+                    const timeEnd = agent.whatTimeIsIt();
+
                     debugRxRes(red('process is receiving response ' + JSON.stringify(arguments)));
-                    console.log()
-                    console.log()
+
 
                     const collectorObject = {};
                     // TODO: there is a object with meta info in arguments[2]
                     collectorObject[transactionStuff.getTransactionId() + ''] = arguments[1];
-                    collector.reportIncomingResponse(collectorObject);
+
+
+                    collector.reportIncomingResponse({
+                        transaction_id: transaction_id,
+                        time_start: timeStart,
+                        time_end:timeEnd,
+                        service_information: agent.getServiceInformation(),
+                        type: 'request_tx',
+                        meta_infomation: arguments
+                    });
 
 
                     return origCallbackFn.apply(this, arguments);
@@ -219,6 +238,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 return original.apply(this, arguments);
 
             }
+
             return transactionStuff.bind(addSession).apply(this, args);
         }
     });
@@ -235,36 +255,36 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
 
 function patternMatchedSenecaNative(pattern) {
-    if(!pattern) {
+    if (!pattern) {
         return false;
     }
-    if(pattern.local$) {
+    if (pattern.local$) {
         debugMain('returning due local$');
         return true;
     }
 
-    if(pattern.client$) {
+    if (pattern.client$) {
         debugMain('returning due client$');
         return true;
     }
 
-    if(pattern.deprecate$) {
+    if (pattern.deprecate$) {
         debugMain('returning due deprecate$');
         return true;
     }
 
-    if(pattern.transport$) {
+    if (pattern.transport$) {
         debugMain('returning due transport$');
         return true;
     }
 
     // TODO: mesh and all the others ;)
-    if(pattern.role === 'seneca' || pattern.role === 'basic' || pattern.role === 'transport' || pattern.role === 'web' || pattern.role === 'util' || pattern.role === 'entity' || pattern.role === 'mem-store') {
+    if (pattern.role === 'seneca' || pattern.role === 'basic' || pattern.role === 'transport' || pattern.role === 'web' || pattern.role === 'util' || pattern.role === 'entity' || pattern.role === 'mem-store') {
         debugMain('returning due role seneca, basic, transport, web, util, entity, mem-store');
         return true;
     }
 
-    if(pattern.init) {
+    if (pattern.init) {
         debugMain('returning due init property');
         return true;
     }
