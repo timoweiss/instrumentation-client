@@ -11,9 +11,9 @@ const collector = require('./collector')();
 const Agent = require('./agent');
 const reporter = require('./reporter');
 
-setInterval(function(){
-    console.log();
-}, 1000)
+// setInterval(function(){
+//     console.log();
+// }, 1000)
 
 
 module.exports.start = function(opts) {
@@ -32,10 +32,10 @@ module.exports.start = function(opts) {
     const namespace = cls.createNamespace('test');
 
     const namespaceFns = {
-        setTransactionId: function(tid) {
+        setTraceId: function(tid) {
             return namespace.set('tid', tid);
         },
-        getTransactionId: function() {
+        getTraceId: function() {
             return namespace.get('tid');
         },
         setRequestId: function(tid) {
@@ -44,7 +44,7 @@ module.exports.start = function(opts) {
         getRequestId: function() {
             return namespace.get('rid');
         },
-        generateTransactionId: function makeid() {
+        generateTraceId: function makeid() {
             return uuid.v4();
         },
         generateRequestId: function makeid() {

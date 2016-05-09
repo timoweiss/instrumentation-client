@@ -55,7 +55,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 debugRxReq('incoming request at:', timeStart);
                 // console.log(red2(JSON.stringify(request)));
 
-                let transaction_id;
+                let traceId;
                 let request_id;
                 let incomingTracingData;
 
@@ -63,9 +63,9 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 if (request.__tracing_data) {
                     debugRxReq('tracing data available for incoming request');
-                    debugRxReq('setting transaction_id for context', request.__tracing_data.transaction_id);
+                    debugRxReq('setting traceId for context', request.__tracing_data.traceId);
 
-                    transaction_id = request.__tracing_data.transaction_id;
+                    traceId = request.__tracing_data.traceId;
                     request_id = request.__tracing_data.request_id;
                     incomingTracingData = request.__tracing_data;
 
@@ -74,8 +74,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 } else {
                     debugRxReq(red2('the request was not from another traced seneca-instance'));
                     throw new Error('TODO: acting client hasnt set any tracing_data');
-                    debugRxReq('generating new transactionId');
-                    transaction_id = transactionStuff.generateTransactionId();
+                    debugRxReq('generating new traceId');
+                    traceId = transactionStuff.generateTraceId();
                     // TODO: what if the actor doesnt add a request_id
                     request_id = null;
                 }
@@ -98,12 +98,12 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     if (!err && data) {
                         debugTxRes(red2('decorate response'), incomingTracingData);
                         // add tracing data back on
-                        arguments[1].__tracing_data = incomingTracingData; //transactionStuff.getTransactionId();
+                        arguments[1].__tracing_data = incomingTracingData; //transactionStuff.getTraceId();
                     }
 
                     // TODO: report outgoing response
                     collector.reportOutgoingResponse({
-                        transaction_id: transaction_id,
+                        traceId: traceId,
                         request_id: request_id,
                         time_start: timeStart,
                         time_end: timeEnd,
@@ -118,14 +118,14 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 };
 
                 function addSession() {
-                    transactionStuff.setTransactionId(transaction_id);
+                    transactionStuff.setTraceId(traceId);
                     transactionStuff.setRequestId(request_id);
                     return origCallbackFn.apply(this, arguments)
 
                 }
 
                 collector.reportIncomingRequest({
-                    transaction_id: transaction_id,
+                    traceId: traceId,
                     request_id: request_id,
                     time_start: timeStart,
                     time_end: null,
@@ -165,7 +165,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
             const timeStart = agent.whatTimeIsIt();
             const request_id = transactionStuff.generateRequestId();
-            let transaction_id = transactionStuff.getTransactionId();
+            let traceId = transactionStuff.getTraceId();
 
             const args = Array.prototype.slice.apply(arguments);
 
@@ -203,28 +203,28 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 debugTxReq('tracing data already exists', pattern.__tracing_data);
                 throw new Error('this should happen')
-                transaction_id = pattern.__tracing_data.transaction_id;
+                traceId = pattern.__tracing_data.traceId;
                 pattern.__tracing_data.request_id = request_id;
                 // TODO: remove, only testing
-                if (!transaction_id) throw new Error('missing transaction_id');
+                if (!traceId) throw new Error('missing traceId');
 
             } else {
                 // this act call is new, decorate with tracing data
                 dataPattern.__tracing_data = {};
                 dataPattern.__tracing_data.initiator = agent.getServiceInformation();
-                if(!transaction_id) {
+                if(!traceId) {
 
-                    transaction_id = request_id;
+                    traceId = request_id;
                 }
 
-                dataPattern.__tracing_data.transaction_id = transaction_id;
+                dataPattern.__tracing_data.traceId = traceId;
                 dataPattern.__tracing_data.request_id = request_id;
-                debugTxReq(red2('transaction_id set:'), transaction_id);
+                debugTxReq(red2('traceId set:'), traceId);
             }
 
 
             collector.reportOutgoingRequest({
-                transaction_id: transaction_id,
+                traceId: traceId,
                 request_id: request_id,
                 time_start: timeStart,
                 time_end: null,
@@ -250,11 +250,11 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                     const collectorObject = {};
                     // TODO: there is a object with meta info in arguments[2]
-                    collectorObject[transactionStuff.getTransactionId() + ''] = arguments[1];
+                    collectorObject[transactionStuff.getTraceId() + ''] = arguments[1];
 
 
                     collector.reportIncomingResponse({
-                        transaction_id: transaction_id,
+                        traceId: traceId,
                         request_id: request_id,
                         time_start: timeStart,
                         time_end:timeEnd,
@@ -271,7 +271,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             }
 
             function addSession() {
-                transactionStuff.setTransactionId(transaction_id);
+                transactionStuff.setTraceId(traceId);
                 return original.apply(this, arguments);
 
             }
