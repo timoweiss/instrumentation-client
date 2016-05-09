@@ -109,7 +109,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                         time_end: timeEnd,
                         time_took: timeTook,
                         service_information: agent.getServiceInformation(),
-                        type: 'response_tx',
+                        type: 'ss',
                         hasError: !!arguments[0],
                         meta_infomation: arguments[0] || arguments[1]
                     });
@@ -131,7 +131,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     time_end: null,
                     time_took: null,
                     service_information: agent.getServiceInformation(),
-                    type: 'request_rx',
+                    type: 'sr',
                     meta_infomation: arguments[0].meta$,
                     transport_infomation: arguments[0].transport$
                 });
@@ -230,7 +230,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 time_end: null,
                 time_took: null,
                 service_information: agent.getServiceInformation(),
-                type: 'request_tx',
+                type: 'cs',
                 meta_infomation: dataPattern
             });
 
@@ -253,6 +253,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     collectorObject[transactionStuff.getTraceId() + ''] = arguments[1];
 
 
+                    // if traceId === request_id, the hole request is done
                     collector.reportIncomingResponse({
                         traceId: traceId,
                         request_id: request_id,
@@ -260,7 +261,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                         time_end:timeEnd,
                         time_took: timeTook,
                         service_information: agent.getServiceInformation(),
-                        type: 'response_rx',
+                        type: 'cr',
                         hasError: !!arguments[0],
                         meta_infomation: arguments[2] || arguments[1]
                     });
