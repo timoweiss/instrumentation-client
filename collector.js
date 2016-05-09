@@ -2,10 +2,7 @@
 
 const debug = require('debug')('collector');
 
-const collectionRequestIn = [];
-const collectionRequestOut = [];
-const collectionResponseIn = [];
-const collectionResponseOut = [];
+let spanEvents = {};
 
 module.exports = function(options) {
 
@@ -20,39 +17,43 @@ module.exports = function(options) {
 
 function reportIncomingRequest(todo) {
     debug('add incoming request to report');
-    collectionRequestIn.push(todo);
+
+    spanEvents[todo.request_id] = todo;
 }
 
 function reportOutgoingRequest(todo) {
     debug('add outgoing request to report');
-    collectionRequestOut.push(todo);
+    spanEvents[todo.request_id] = todo;
+
 }
 
 function reportIncomingResponse(todo) {
+    if(!spanEvents[todo.request_id]) {
+        throw new Error('no request id present');
+    }
     debug('add incoming response to report');
-    collectionResponseIn.push(todo);
+
+    todo.annotations.unshift(spanEvents[todo.request_id].annotations[0]);
+    spanEvents[todo.request_id] = todo;
+
 }
 
 function reportOutgoingResponse(todo) {
+    if(!spanEvents[todo.request_id]) {
+        throw new Error('no request id present');
+    }
     debug('add outgoing response to report');
-    collectionResponseOut.push(todo);
+
+    todo.annotations.unshift(spanEvents[todo.request_id].annotations[0]);
+    spanEvents[todo.request_id] = todo;
+
 }
 
 function flush() {
+    console.log('spanEvents', JSON.stringify(spanEvents));
     debug('flushing collections');
-    const snapshot = {
-        inRequest: collectionRequestIn.slice(0),
-        outRequest: collectionRequestOut.slice(0),
-        inResponse: collectionResponseIn.slice(0),
-        outResponse: collectionResponseOut.slice(0)
-    }
-    collectionRequestIn.length = 0;
-    collectionRequestOut.length = 0;
-    collectionResponseIn.length = 0;
-    collectionResponseOut.length = 0;
-    return snapshot
-}
 
-// setInterval(function() {
-//     console.log('flushing', flush());
-// }, 10000);
+    let _spanEvents = spanEvents;
+    spanEvents = {};
+    return _spanEvents;
+}

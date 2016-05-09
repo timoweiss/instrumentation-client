@@ -21,7 +21,7 @@ function report() {
 
     const data = collector.flush();
 
-    if (!data.inRequest.length && !data.outRequest.length && !data.outResponse.length && !data.inResponse.length) {
+    if (Object.keys(data).length === 0) {
         console.log('noting to report, returning');
         return;
     }
