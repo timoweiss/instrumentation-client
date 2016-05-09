@@ -127,10 +127,13 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 }
 
+                let name = arguments[0].meta$.pattern;
+
                 collector.reportIncomingRequest({
                     traceId: traceId,
                     request_id: request_id,
                     timestamp: timeStart,
+                    name: name,
                     time_end: null,
                     duration: null,
                     annotations: [{
@@ -176,10 +179,10 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             const args = Array.prototype.slice.apply(arguments);
 
             let stringPattern = args[0];
-            if(typeof stringPattern === 'object') {
+            if (typeof stringPattern === 'object') {
                 stringPattern = jsonic.stringify(stringPattern);
             }
-            console.log('stringPattern:',red2(stringPattern))
+            // console.log('stringPattern:',red2(stringPattern))
 
             args[0] = jsonic(args[0]);
             const origCallbackFn = args.pop();
@@ -204,7 +207,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 debugTxReq(red2('TODO:'), 'is dat safe? i\'m ignoring an act call because of it\'s transport$ prop', JSON.stringify(arguments));
                 // return original.apply(this, arguments);
             }
-            
+
             if (pattern && pattern.__tracing_data) {
 
                 debugTxReq('tracing data already exists', pattern.__tracing_data);
@@ -218,7 +221,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 // this act call is new, decorate with tracing data
                 dataPattern.__tracing_data = {};
                 dataPattern.__tracing_data.initiator = agent.getServiceInformation();
-                if(!traceId) {
+                if (!traceId) {
 
                     traceId = request_id;
                 }
@@ -233,6 +236,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 traceId: traceId,
                 request_id: request_id,
                 timestamp: timeStart,
+                name: stringPattern,
                 time_end: null,
                 duration: null,
                 annotations: [{
@@ -261,19 +265,20 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     // TODO: there is a object with meta info in arguments[2]
                     collectorObject[transactionStuff.getTraceId() + ''] = arguments[1];
 
-
+                    console.log(red2(JSON.stringify(arguments)))
                     // if traceId === request_id, the hole request is done
                     collector.reportIncomingResponse({
                         traceId: traceId,
                         request_id: request_id,
                         timestamp: timeStart,
                         duration: timeTook,
+                        name: stringPattern + 'aASDASDSAD',
                         annotations: [{
                             endpoint: agent.getServiceInformation(),
                             value: 'cr',
+                            wasLocal: !arguments[2],
                             timestamp: timeEnd
-                        }],
-                        meta_infomation: arguments[2] || arguments[1]
+                        }]
                     });
 
 
