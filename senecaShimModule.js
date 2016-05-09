@@ -82,6 +82,9 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 let origCb = arguments[arguments.length - 1];
 
+
+                let name = arguments[0].meta$.pattern;
+
                 // function the user calls to emit the result
                 arguments[arguments.length - 1] = function responseCallback(err, data) {
                     let timeEnd = agent.whatTimeIsIt();
@@ -101,20 +104,20 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                         arguments[1].__tracing_data = incomingTracingData; //transactionStuff.getTraceId();
                     }
 
-                    // TODO: report outgoing response
+
                     collector.reportOutgoingResponse({
                         traceId: traceId,
                         request_id: request_id,
+                        name: name,
                         timestamp: timeStart,
-                        time_end: timeEnd,
                         duration: timeTook,
                         annotations: [{
                             endpoint: agent.getServiceInformation(),
                             value: 'ss',
                             timestamp: timeEnd
-                        }],
-                        hasError: !!arguments[0],
-                        meta_infomation: arguments[0] || arguments[1]
+                        }]
+                        // hasError: !!arguments[0],
+                        // meta_infomation: arguments[0] || arguments[1]
                     });
 
                     return origCb.apply(this, arguments);
@@ -127,14 +130,11 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                 }
 
-                let name = arguments[0].meta$.pattern;
-
                 collector.reportIncomingRequest({
                     traceId: traceId,
                     request_id: request_id,
                     timestamp: timeStart,
                     name: name,
-                    time_end: null,
                     duration: null,
                     annotations: [{
                         endpoint: agent.getServiceInformation(),
@@ -237,7 +237,6 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 request_id: request_id,
                 timestamp: timeStart,
                 name: stringPattern,
-                time_end: null,
                 duration: null,
                 annotations: [{
                     endpoint: agent.getServiceInformation(),
