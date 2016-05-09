@@ -265,14 +265,13 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     // TODO: there is a object with meta info in arguments[2]
                     collectorObject[transactionStuff.getTraceId() + ''] = arguments[1];
 
-                    console.log(red2(JSON.stringify(arguments)))
                     // if traceId === request_id, the hole request is done
                     collector.reportIncomingResponse({
                         traceId: traceId,
                         request_id: request_id,
                         timestamp: timeStart,
                         duration: timeTook,
-                        name: stringPattern + 'aASDASDSAD',
+                        name: stringPattern,
                         annotations: [{
                             endpoint: agent.getServiceInformation(),
                             value: 'cr',
