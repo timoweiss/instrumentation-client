@@ -2,7 +2,9 @@
 
 const debug = require('debug')('collector');
 
-let spanEvents = {};
+let unfulfilledSpanEventsServer = {};
+let unfulfilledSpanEventsClient = {};
+let fulfilledSpanEvents = [];
 
 module.exports = function(options) {
 
@@ -16,44 +18,51 @@ module.exports = function(options) {
 };
 
 function reportIncomingRequest(incomingEvent) {
-    debug('add incoming request to report');
+    debug('add incoming request to report', incomingEvent.request_id);
 
-    spanEvents[incomingEvent.request_id] = incomingEvent;
+    unfulfilledSpanEventsServer[incomingEvent.request_id] = incomingEvent;
 }
 
 function reportOutgoingRequest(incomingEvent) {
-    debug('add outgoing request to report');
-    spanEvents[incomingEvent.request_id] = incomingEvent;
+    debug('add outgoing request to report', incomingEvent.request_id);
+    unfulfilledSpanEventsClient[incomingEvent.request_id] = incomingEvent;
 
 }
 
 function reportIncomingResponse(incomingEvent) {
-    if(!spanEvents[incomingEvent.request_id]) {
-        throw new Error('no request id present');
+    if(!unfulfilledSpanEventsClient[incomingEvent.request_id]) {
+        // TODO: do not throw
+        throw new Error('no request id present ' + incomingEvent.request_id);
     }
-    debug('add incoming response to report');
+    debug('add incoming response to report', incomingEvent.request_id);
 
-    incomingEvent.annotations.unshift(spanEvents[incomingEvent.request_id].annotations[0]);
-    spanEvents[incomingEvent.request_id] = incomingEvent;
+    incomingEvent.annotations.unshift(unfulfilledSpanEventsClient[incomingEvent.request_id].annotations[0]);
+    unfulfilledSpanEventsClient[incomingEvent.request_id] = incomingEvent;
+
+    fulfilledSpanEvents.push(unfulfilledSpanEventsClient[incomingEvent.request_id]);
+    delete unfulfilledSpanEventsClient[incomingEvent.request_id];
 
 }
 
 function reportOutgoingResponse(incomingEvent) {
-    if(!spanEvents[incomingEvent.request_id]) {
-        throw new Error('no request id present');
+    if(!unfulfilledSpanEventsServer[incomingEvent.request_id]) {
+        // TODO: do not throw
+        throw new Error('no request id present ' + incomingEvent.request_id);
     }
-    debug('add outgoing response to report');
+    debug('add outgoing response to report', incomingEvent.request_id);
 
-    incomingEvent.annotations.unshift(spanEvents[incomingEvent.request_id].annotations[0]);
-    spanEvents[incomingEvent.request_id] = incomingEvent;
+    incomingEvent.annotations.unshift(unfulfilledSpanEventsServer[incomingEvent.request_id].annotations[0]);
+    unfulfilledSpanEventsServer[incomingEvent.request_id] = incomingEvent;
+
+    fulfilledSpanEvents.push(unfulfilledSpanEventsServer[incomingEvent.request_id]);
+    delete unfulfilledSpanEventsServer[incomingEvent.request_id];
 
 }
 
 function flush() {
-    console.log('spanEvents', JSON.stringify(spanEvents));
     debug('flushing collections');
 
-    let _spanEvents = spanEvents;
-    spanEvents = {};
-    return _spanEvents;
+    const toFlush = fulfilledSpanEvents.splice(0);
+
+    return toFlush;
 }
