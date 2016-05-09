@@ -15,37 +15,37 @@ module.exports = function(options) {
     }
 };
 
-function reportIncomingRequest(todo) {
+function reportIncomingRequest(incomingEvent) {
     debug('add incoming request to report');
 
-    spanEvents[todo.request_id] = todo;
+    spanEvents[incomingEvent.request_id] = incomingEvent;
 }
 
-function reportOutgoingRequest(todo) {
+function reportOutgoingRequest(incomingEvent) {
     debug('add outgoing request to report');
-    spanEvents[todo.request_id] = todo;
+    spanEvents[incomingEvent.request_id] = incomingEvent;
 
 }
 
-function reportIncomingResponse(todo) {
-    if(!spanEvents[todo.request_id]) {
+function reportIncomingResponse(incomingEvent) {
+    if(!spanEvents[incomingEvent.request_id]) {
         throw new Error('no request id present');
     }
     debug('add incoming response to report');
 
-    todo.annotations.unshift(spanEvents[todo.request_id].annotations[0]);
-    spanEvents[todo.request_id] = todo;
+    incomingEvent.annotations.unshift(spanEvents[incomingEvent.request_id].annotations[0]);
+    spanEvents[incomingEvent.request_id] = incomingEvent;
 
 }
 
-function reportOutgoingResponse(todo) {
-    if(!spanEvents[todo.request_id]) {
+function reportOutgoingResponse(incomingEvent) {
+    if(!spanEvents[incomingEvent.request_id]) {
         throw new Error('no request id present');
     }
     debug('add outgoing response to report');
 
-    todo.annotations.unshift(spanEvents[todo.request_id].annotations[0]);
-    spanEvents[todo.request_id] = todo;
+    incomingEvent.annotations.unshift(spanEvents[incomingEvent.request_id].annotations[0]);
+    spanEvents[incomingEvent.request_id] = incomingEvent;
 
 }
 
