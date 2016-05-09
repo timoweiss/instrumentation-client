@@ -23,21 +23,9 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
         return function () {
 
             const args = Array.prototype.slice.apply(arguments);
-
-            let pluginDefinition = args.pop();
-            let origCallbackFn;
-            // seneca add some plugin information, but if not, fix the vars
-            if (typeof pluginDefinition === 'function') {
-                origCallbackFn = pluginDefinition;
-                pluginDefinition = void 0;
-            } else {
-                origCallbackFn = args.pop();
-            }
-
             args[0] = jsonic(args[0]);
 
             const pattern = args[0];
-
 
             // lots of noise needs to be filtered
             if (patternMatchedSenecaNative(pattern)) {
@@ -47,6 +35,17 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 debugMain('patching pattern, install interceptors', pattern);
             }
 
+            let pluginDefinition = args.pop();
+            let origCallbackFn;
+
+            // seneca adds some plugin information, but if not, fix the vars
+            if (typeof pluginDefinition === 'function') {
+                origCallbackFn = pluginDefinition;
+                pluginDefinition = void 0;
+            } else {
+                origCallbackFn = args.pop();
+            }
+
             // TODO: handle, but this should never happen
             if (!origCallbackFn) throw new Error('no nix da callback');
 
@@ -54,7 +53,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             function wrappedHandler(request, callback) {
                 let timeStart = agent.whatTimeIsIt();
                 debugRxReq('incoming request at:', timeStart);
-                console.log(red2(JSON.stringify(request)));
+                // console.log(red2(JSON.stringify(request)));
 
                 let transaction_id;
                 let request_id;
@@ -169,6 +168,12 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             let transaction_id = transactionStuff.getTransactionId();
 
             const args = Array.prototype.slice.apply(arguments);
+
+            let stringPattern = args[0];
+            if(typeof stringPattern === 'object') {
+                stringPattern = jsonic.stringify(stringPattern);
+            }
+            console.log('stringPattern:',red2(stringPattern))
 
             args[0] = jsonic(args[0]);
             const origCallbackFn = args.pop();

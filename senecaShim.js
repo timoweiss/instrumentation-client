@@ -24,6 +24,9 @@ module.exports.start = function(opts) {
     // TODO: send welcome message to server
     // TODO: send ping to server?
 
+    // TODO debugging only
+    process.title = opts.service_name;
+
     const agent = new Agent(opts);
 
     const namespace = cls.createNamespace('test');
