@@ -8,18 +8,22 @@ const collector = require('./lib/collector');
 const reporter = require('./lib/reporter');
 const Agent = require('./lib/agent');
 
+const defaultConfig = {};
 
-module.exports.start = function start(options) {
+
+module.exports.start = function start(config) {
     console.log('starting instrumentations');
 
-    const agent = new Agent(options);
+    config = Object.assign(config, defaultConfig);
+
+    const agent = new Agent(config);
     const namespace = cls.createNamespace('TODO');
 
-    options.collector = collector;
-    options.agent = agent;
-    options.reporter = reporter;
+    config.collector = collector;
+    config.agent = agent;
+    config.reporter = reporter;
 
-    options.namespaceFns = {
+    config.namespaceFns = {
         setTraceId: function(tid) {
             return namespace.set('tid', tid);
         },
@@ -42,8 +46,8 @@ module.exports.start = function start(options) {
             return namespace.bind(fn)
         }
     };
-    options.namespace = namespace;
+    config.namespace = namespace;
 
 
-    require('./lib/instrumentations/senecaShim').start(options);
+    require('./lib/instrumentations/senecaShim').start(config);
 };
