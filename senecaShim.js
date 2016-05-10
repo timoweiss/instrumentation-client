@@ -4,11 +4,6 @@ var eventLoopStats = require('event-loop-stats');
 const uuid = require('node-uuid');
 
 
-
-
-const reporter = require('./lib/reporter');
-
-
 module.exports.start = function(opts) {
     //console.log('lets create some hooks', opts);
 
@@ -38,7 +33,6 @@ module.exports.start = function(opts) {
             senecaInstance.ready(function() {
                 collector.flush();
             });
-            reporter(opts, collector);
 
             require('./senecaShimModule')(senecaInstance, agent, collector, namespaceFns);
             
