@@ -8,7 +8,7 @@ const collector = require('./lib/collector');
 const reporter = require('./lib/reporter');
 const Agent = require('./lib/agent');
 
-const defaultConfig = {};
+const defaultConfig = require('./lib/util/defaultConfig');
 
 
 module.exports.start = function start(config) {
