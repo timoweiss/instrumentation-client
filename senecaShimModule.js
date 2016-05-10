@@ -12,7 +12,7 @@ const debugRxRes = debug('receiving-response');
 
 const jsonic = require('jsonic');
 
-module.exports = function (senecaInstance, agent, collector, transactionStuff) {
+module.exports = function (senecaInstance, agent, collector, transactionHelper) {
     debugMain('wrapping senecaInstance');
 
     // shimming add call
@@ -75,7 +75,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     debugRxReq(red2('the request was not from another traced seneca-instance'));
                     throw new Error('TODO: acting client hasnt set any tracing_data');
                     debugRxReq('generating new traceId');
-                    traceId = transactionStuff.generateTraceId();
+                    traceId = transactionHelper.generateTraceId();
                     // TODO: what if the actor doesnt add a request_id
                     request_id = null;
                 }
@@ -101,7 +101,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                     if (!err && data) {
                         debugTxRes(red2('decorate response'), incomingTracingData);
                         // add tracing data back on
-                        arguments[1].__tracing_data = incomingTracingData; //transactionStuff.getTraceId();
+                        arguments[1].__tracing_data = incomingTracingData; //transactionHelper.getTraceId();
                     }
 
 
@@ -124,8 +124,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 };
 
                 function addSession() {
-                    transactionStuff.setTraceId(traceId);
-                    transactionStuff.setRequestId(request_id);
+                    transactionHelper.setTraceId(traceId);
+                    transactionHelper.setRequestId(request_id);
                     return origCallbackFn.apply(this, arguments)
 
                 }
@@ -146,7 +146,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
                 });
 
 
-                return transactionStuff.bind(addSession).apply(this, arguments);
+                return transactionHelper.bind(addSession).apply(this, arguments);
 
 
             }
@@ -173,8 +173,8 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
         return function (/*pattern, [[data], [callback]]*/) {
 
             const timeStart = agent.whatTimeIsIt();
-            const request_id = transactionStuff.generateRequestId();
-            let traceId = transactionStuff.getTraceId();
+            const request_id = transactionHelper.generateRequestId();
+            let traceId = transactionHelper.getTraceId();
 
             const args = Array.prototype.slice.apply(arguments);
 
@@ -262,7 +262,7 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
 
                     const collectorObject = {};
                     // TODO: there is a object with meta info in arguments[2]
-                    collectorObject[transactionStuff.getTraceId() + ''] = arguments[1];
+                    collectorObject[transactionHelper.getTraceId() + ''] = arguments[1];
 
                     // if traceId === request_id, the hole request is done
                     collector.reportIncomingResponse({
@@ -285,12 +285,12 @@ module.exports = function (senecaInstance, agent, collector, transactionStuff) {
             }
 
             function addSession() {
-                transactionStuff.setTraceId(traceId);
+                transactionHelper.setTraceId(traceId);
                 return original.apply(this, arguments);
 
             }
 
-            return transactionStuff.bind(addSession).apply(this, args);
+            return transactionHelper.bind(addSession).apply(this, args);
         }
     });
 
