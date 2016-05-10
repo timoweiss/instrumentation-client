@@ -7,7 +7,7 @@ const uuid = require('node-uuid');
 const cls = require('continuation-local-storage');
 
 
-const reporter = require('./reporter');
+const reporter = require('./lib/reporter');
 
 
 module.exports.start = function(opts) {
