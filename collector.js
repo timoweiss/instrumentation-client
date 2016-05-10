@@ -6,16 +6,14 @@ let unfulfilledSpanEventsServer = {};
 let unfulfilledSpanEventsClient = {};
 let fulfilledSpanEvents = [];
 
-module.exports = function(options) {
-
-    return {
-        reportIncomingRequest,
-        reportOutgoingRequest,
-        reportIncomingResponse,
-        reportOutgoingResponse,
-        flush
-    }
+module.exports = {
+    reportIncomingRequest,
+    reportOutgoingRequest,
+    reportIncomingResponse,
+    reportOutgoingResponse,
+    flush
 };
+
 
 function reportIncomingRequest(incomingEvent) {
     debug('add incoming request to report', incomingEvent.request_id);
@@ -30,7 +28,7 @@ function reportOutgoingRequest(incomingEvent) {
 }
 
 function reportIncomingResponse(incomingEvent) {
-    if(!unfulfilledSpanEventsClient[incomingEvent.request_id]) {
+    if (!unfulfilledSpanEventsClient[incomingEvent.request_id]) {
         // TODO: do not throw
         throw new Error('no request id present ' + incomingEvent.request_id);
     }
@@ -45,7 +43,7 @@ function reportIncomingResponse(incomingEvent) {
 }
 
 function reportOutgoingResponse(incomingEvent) {
-    if(!unfulfilledSpanEventsServer[incomingEvent.request_id]) {
+    if (!unfulfilledSpanEventsServer[incomingEvent.request_id]) {
         // TODO: do not throw
         throw new Error('no request id present ' + incomingEvent.request_id);
     }

@@ -7,13 +7,9 @@ const uuid = require('node-uuid');
 const cls = require('continuation-local-storage');
 
 
-const collector = require('./collector')();
+const collector = require('./collector');
 const Agent = require('./agent');
 const reporter = require('./reporter');
-
-// setInterval(function(){
-//     console.log();
-// }, 1000)
 
 
 module.exports.start = function(opts) {
