@@ -1,8 +1,8 @@
 'use strict';
 
 
-const collector = require('./collector');
-const Agent = require('./agent');
+const collector = require('./lib/collector');
+const Agent = require('./lib/agent');
 
 
 module.exports.start = function start(options) {
