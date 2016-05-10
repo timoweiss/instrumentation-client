@@ -45,5 +45,5 @@ module.exports.start = function start(options) {
     options.namespace = namespace;
 
 
-    require('./senecaShim').start(options);
+    require('./lib/instrumentations/senecaShim').start(options);
 };
