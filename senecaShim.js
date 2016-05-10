@@ -4,7 +4,6 @@ var eventLoopStats = require('event-loop-stats');
 const uuid = require('node-uuid');
 
 
-const cls = require('continuation-local-storage');
 
 
 const reporter = require('./lib/reporter');
@@ -24,31 +23,9 @@ module.exports.start = function(opts) {
     const agent = opts.agent;
     const collector = opts.collector;
 
-    const namespace = cls.createNamespace('test');
+    const namespaceFns = opts.namespaceFns;
 
-    const namespaceFns = {
-        setTraceId: function(tid) {
-            return namespace.set('tid', tid);
-        },
-        getTraceId: function() {
-            return namespace.get('tid');
-        },
-        setRequestId: function(tid) {
-            return namespace.set('rid', tid);
-        },
-        getRequestId: function() {
-            return namespace.get('rid');
-        },
-        generateTraceId: function makeid() {
-            return uuid.v4();
-        },
-        generateRequestId: function makeid() {
-            return uuid.v4();
-        },
-        bind: function(fn) {
-            return namespace.bind(fn)
-        }
-    };
+
 
 
     hook('seneca', function (exports, name, basedir) {
