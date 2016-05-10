@@ -7,8 +7,6 @@ const uuid = require('node-uuid');
 const cls = require('continuation-local-storage');
 
 
-const collector = require('./collector');
-const Agent = require('./agent');
 const reporter = require('./reporter');
 
 
@@ -23,7 +21,8 @@ module.exports.start = function(opts) {
     // TODO debugging only
     process.title = opts.service_name;
 
-    const agent = new Agent(opts);
+    const agent = opts.agent;
+    const collector = opts.collector;
 
     const namespace = cls.createNamespace('test');
 
@@ -64,7 +63,7 @@ module.exports.start = function(opts) {
             });
             reporter(opts, collector);
 
-            require('./senecaShimModule')(senecaInstance, agent, collector, namespaceFns)
+            require('./senecaShimModule')(senecaInstance, agent, collector, namespaceFns);
             
             return senecaInstance;
         };
