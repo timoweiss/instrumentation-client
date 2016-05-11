@@ -8,6 +8,8 @@ const collector = require('./lib/collector');
 const reporter = require('./lib/reporter');
 const Agent = require('./lib/agent');
 
+const osMetrics = require('./lib/metrics/osMetrics');
+
 const defaultConfig = require('./lib/util/defaultConfig');
 
 
@@ -17,6 +19,13 @@ module.exports.start = function start(config) {
     config = Object.assign(config, defaultConfig);
 
     const agent = new Agent(config);
+
+    const osm = osMetrics(config);
+
+    setInterval(() => {
+        console.log(osm.flush());
+    }, 10000);
+
     const namespace = cls.createNamespace('TODO');
 
     config.collector = collector;
