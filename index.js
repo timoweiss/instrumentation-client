@@ -18,19 +18,20 @@ module.exports.start = function start(config) {
 
     config = Object.assign(config, defaultConfig);
 
-    const agent = new Agent(config);
 
     const osm = osMetrics(config);
 
-    setInterval(() => {
-        console.log(osm.flush());
-    }, 10000);
+    // setInterval(() => {
+    //     console.log(osm.flush());
+    // }, 10000);
 
     const namespace = cls.createNamespace('TODO');
 
     config.collector = collector;
-    config.agent = agent;
-    config.reporter = reporter;
+    config.osm = osm;
+    config.reporter = reporter(config);
+
+    const agent = Agent(config);
 
     config.namespaceFns = {
         setTraceId: function(tid) {
@@ -57,6 +58,7 @@ module.exports.start = function start(config) {
     };
     config.namespace = namespace;
 
+    config.agent = agent;
 
     require('./lib/instrumentations/senecaShim').start(config);
 };
