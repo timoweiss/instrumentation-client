@@ -31,6 +31,8 @@ module.exports.start = function start(config) {
     config.osm = osm;
     config.reporter = reporter(config);
 
+    config.reporter.sendStartUpInfo();
+
     const agent = Agent(config);
 
     config.namespaceFns = {
