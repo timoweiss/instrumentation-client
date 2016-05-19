@@ -38,6 +38,8 @@ module.exports.start = function start(config) {
 
     config.reporter.sendStartUpInfo();
 
+    process.on('exit', () => config.reporter.report(true));
+
     const agent = Agent(config);
 
     config.namespaceFns = {
