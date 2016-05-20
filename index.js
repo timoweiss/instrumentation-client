@@ -69,5 +69,5 @@ module.exports.start = function start(config) {
 
     config.agent = agent;
 
-    require('./lib/instrumentations/senecaShim').start(config);
+    require('./lib/instrumentations').start(config);
 };
