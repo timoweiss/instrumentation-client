@@ -14,10 +14,14 @@ const defaultConfig = require('./lib/util/defaultConfig');
 
 
 module.exports.start = function start(config) {
+    config = Object.assign(defaultConfig, config);
 
+    if(config.todo_disabled) {
+        return console.log('Todo disabled, have a nice day');
+    }
     console.log('starting instrumentations');
 
-    config = Object.assign(defaultConfig, config);
+
 
     if(!config || !config.app_token) {
         throw new Error('please provide an app_token, you can get one from: https://TODO.io');
