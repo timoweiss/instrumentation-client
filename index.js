@@ -15,13 +15,13 @@ const defaultConfig = require('./lib/util/defaultConfig');
 
 module.exports.start = function start(config) {
 
-    if(!config || !config.app_token) {
-        throw new Error('please provide an app_token, you can get one from: https://TODO.io');
-    }
-
     console.log('starting instrumentations');
 
     config = Object.assign(defaultConfig, config);
+
+    if(!config || !config.app_token) {
+        throw new Error('please provide an app_token, you can get one from: https://TODO.io');
+    }
 
     console.log('config', config)
     const osm = osMetrics(config);
