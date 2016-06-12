@@ -2,7 +2,6 @@
 
 
 const cls = require('continuation-local-storage');
-const uuid = require('node-uuid');
 
 const collector = require('./lib/collector');
 const reporter = require('./lib/reporter');
@@ -59,12 +58,8 @@ module.exports.start = function start(config) {
         getRequestId: function() {
             return namespace.get('rid');
         },
-        generateTraceId: function makeid() {
-            return uuid.v4();
-        },
-        generateRequestId: function makeid() {
-            return uuid.v4();
-        },
+        generateTraceId: makeid,
+        generateRequestId: makeid,
         bind: function(fn) {
             return namespace.bind(fn)
         }
@@ -75,3 +70,21 @@ module.exports.start = function start(config) {
 
     require('./lib/instrumentations').start(config);
 };
+
+
+// this is borrowed from:
+// https://github.com/openzipkin/zipkin-js/blob/master/packages/zipkin/src/tracer/randomTraceId.js
+function makeid() {
+    const digits = '0123456789abcdef';
+    const dLength = digits.length;
+    let n = '';
+    for (let i = 0; i < 16; i++) {
+        const rand = Math.floor(Math.random() * dLength);
+
+        // avoid leading zeroes
+        if (rand !== 0 || n.length > 0) {
+            n += digits[rand];
+        }
+    }
+    return n;
+}
