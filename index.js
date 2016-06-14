@@ -45,6 +45,8 @@ module.exports.start = function start(config) {
 
     const agent = Agent(config);
 
+
+    const libraryType = {};
     config.namespaceFns = {
         setTraceId: function(tid) {
             return namespace.set('tid', tid);
@@ -62,7 +64,8 @@ module.exports.start = function start(config) {
         generateRequestId: makeid,
         bind: function(fn) {
             return namespace.bind(fn)
-        }
+        },
+        libraryType: libraryType
     };
     config.namespace = namespace;
 
