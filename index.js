@@ -29,10 +29,6 @@ module.exports.start = function start(config) {
     console.log('config', config)
     const osm = osMetrics(config);
 
-    // setInterval(() => {
-    //     console.log(osm.flush());
-    // }, 10000);
-
     const namespace = cls.createNamespace('TODO');
 
     config.collector = collector;
@@ -80,14 +76,11 @@ module.exports.start = function start(config) {
 function makeid() {
     const digits = '0123456789abcdef';
     const dLength = digits.length;
-    let n = '';
-    for (let i = 0; i < 16; i++) {
+    let n = digits[Math.floor(Math.random() * (dLength - 1)) + 1];
+    for (let i = 0; i < 15; i++) {
         const rand = Math.floor(Math.random() * dLength);
-
-        // avoid leading zeroes
-        if (rand !== 0 || n.length > 0) {
-            n += digits[rand];
-        }
+        n += digits[rand];
     }
+    console.log('length of id:', n.length);
     return n;
 }
