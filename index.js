@@ -81,6 +81,6 @@ function makeid() {
         const rand = Math.floor(Math.random() * dLength);
         n += digits[rand];
     }
-    console.log('length of id:', n.length);
+    // console.log('length of id:', n.length);
     return n;
 }
