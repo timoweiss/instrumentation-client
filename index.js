@@ -19,7 +19,7 @@ module.exports.start = function start(config) {
         return console.log('Todo disabled, have a nice day');
     }
     console.log('starting instrumentations');
-
+    console.log('reporting to', config.collector_host);
 
 
     if(!config || !config.app_token) {
