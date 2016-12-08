@@ -1,6 +1,13 @@
-## Kein Shimmer
+## instrumentation-client
 
-`git clone https://github.com/timoweiss/todoclient.git && cd $_`
+This project is a WIP. Once installed and loaded as the first module in your node application, the instrumentation client collects and sends metrics to a given endpoint.
+
+There is also an [collector-backend available](https://github.com/timoweiss/collector-backend).
+
+Sorry for the sparse information - please raise an issue if you want to know more!
+
+
+`git clone https://github.com/timoweiss/instrumentation-client.git && cd $_`
 
 `npm i`
 
